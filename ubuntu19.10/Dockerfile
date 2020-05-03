@@ -219,3 +219,5 @@ RUN set -xe && \
     --count HEAD)-g$(git rev-parse --short HEAD)" --backup=no --deldoc=yes \
     --delspec=yes --deldesc=yes --strip=yes --stripso=yes --addso=yes \
     --fstrans=no --default
+
+ENTRYPOINT ["ffmpeg"]
