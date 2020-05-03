@@ -159,35 +159,6 @@ RUN set -xe && \
       --fstrans=no \
       --default ninja install
 
-# need libs
-RUN apt-get install -y libavcodec-dev libavformat-dev libswscale-dev
-
-#FFMS2
-RUN set -xe && \
-    cd /tmp &&\
-    git clone --depth 1 git://github.com/ffms/ffms2.git && \
-    cd ffms2 && \
-    PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
-    CPPFLAGS="-I/usr/local/include/avisynth" \
-    ./autogen.sh --enable-shared --enable-avisynth && \
-    make -j$(nproc) && \
-    checkinstall --pkgname=ffms2 --pkgversion="1:$(./version.sh)-git" \
-    --backup=no --deldoc=yes --delspec=yes --deldesc=yes --strip=yes --stripso=yes \
-    --addso=yes --fstrans=no --default && \
-    ldconfig
-
-# l-smash-source
-RUN set -xe && \
-    cd /tmp &&\
-    git clone https://github.com/HolyWu/L-SMASH-Works.git && \
-    cd /tmp/L-SMASH-Works/AviSynth && \
-    git checkout 72d3eac802eebcfc9080009c1a8d47a747e3a306 &&\
-    CC=gcc-9 CXX=gcc-9 LD=gcc-9 meson build && \
-    cd build && \
-    ninja -v && \
-    ninja install && \
-    ldconfig
-
 # FFmpeg
 RUN set -xe && \
     sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list && \
@@ -197,7 +168,6 @@ RUN set -xe && \
     git clone --depth 1 git://git.ffmpeg.org/ffmpeg.git && \
     cd /tmp/ffmpeg && \
     ./configure \
-#      --enable-shared \
       --enable-gpl\
       --enable-version3 \
       --disable-doc \
@@ -219,5 +189,31 @@ RUN set -xe && \
     --count HEAD)-g$(git rev-parse --short HEAD)" --backup=no --deldoc=yes \
     --delspec=yes --deldesc=yes --strip=yes --stripso=yes --addso=yes \
     --fstrans=no --default
+
+#FFMS2
+RUN set -xe && \
+    cd /tmp &&\
+    git clone --depth 1 git://github.com/ffms/ffms2.git && \
+    cd ffms2 && \
+    PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+    CPPFLAGS="-I/usr/local/include/avisynth" \
+    ./autogen.sh --enable-shared --enable-avisynth && \
+    make -j$(nproc) && \
+    checkinstall --pkgname=ffms2 --pkgversion="1:$(./version.sh)-git" \
+    --backup=no --deldoc=yes --delspec=yes --deldesc=yes --strip=yes --stripso=yes \
+    --addso=yes --fstrans=no --default && \
+    ldconfig
+
+# l-smash-source
+RUN set -xe && \
+    cd /tmp &&\
+    git clone https://github.com/HolyWu/L-SMASH-Works.git && \
+    cd /tmp/L-SMASH-Works/AviSynth && \
+    git checkout 72d3eac802eebcfc9080009c1a8d47a747e3a306 &&\
+    CC=gcc-9 CXX=gcc-9 LD=gcc-9 LDFLAGS="-Wl,-Bsymbolic" meson build && \
+    cd build && \
+    ninja -v && \
+    ninja install && \
+    ldconfig
 
 ENTRYPOINT ["ffmpeg"]
