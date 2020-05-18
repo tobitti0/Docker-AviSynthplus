@@ -66,7 +66,7 @@ ARG         PKG_CONFIG_PATH="/opt/ffmpeg/share/pkgconfig:/opt/ffmpeg/lib/pkgconf
 ARG         PREFIX=/opt/ffmpeg
 ARG         LD_LIBRARY_PATH="/opt/ffmpeg/lib:/opt/ffmpeg/lib64:/usr/lib64:/usr/lib:/lib64:/lib"
 
-# neet avisynth+ >=gcc9
+# need avisynth+ >=gcc9
 RUN     apt-get -y update && \
         apt-get -y install software-properties-common && \
         add-apt-repository -y ppa:ubuntu-toolchain-r/test
