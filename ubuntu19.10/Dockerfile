@@ -9,9 +9,11 @@ RUN     apt-get -yqq update && \
 
 FROM base as build
 
-ENV         FFMPEG_VERSION=snapshot \
-            NASM_VER=2.14 \
-            YASM_VER=1.3.0 \
+ENV         FFMPEG_VERSION=n4.3.1 \
+            LSMASHSOURCE_VERSION=20200728 \
+            AVISYNTHPLUS_VERSION=v3.6.1 \
+            NASM_VERSION=2.14 \
+            YASM_VERSION=1.3.0 \
             AOM_VERSION=v1.0.0 \
             FDKAAC_VERSION=0.1.5 \
             FONTCONFIG_VERSION=2.12.4 \
@@ -92,7 +94,7 @@ RUN \
         DIR=/tmp/nasm && \
         mkdir -p ${DIR} && \
         cd ${DIR} && \
-        curl https://www.nasm.us/pub/nasm/releasebuilds/${NASM_VER}/nasm-${NASM_VER}.tar.bz2 | \
+        curl https://www.nasm.us/pub/nasm/releasebuilds/${NASM_VERSION}/nasm-${NASM_VERSION}.tar.bz2 | \
         tar -jx --strip-components 1 && \
         ./autogen.sh && \
         ./configure --prefix=${SRC} && \
@@ -104,7 +106,7 @@ RUN \
         DIR=/tmp/yasm && \
         mkdir -p ${DIR} && \
         cd ${DIR} && \
-        curl https://www.tortall.net/projects/yasm/releases/yasm-${YASM_VER}.tar.gz | \
+        curl https://www.tortall.net/projects/yasm/releases/yasm-${YASM_VERSION}.tar.gz | \
         tar -zx --strip-components 1 && \
         ./configure \
           --prefix=${SRC} && \
@@ -480,7 +482,7 @@ RUN     set -xe && \
         DIR=/tmp/avisynth && \
         mkdir -p ${DIR} && \
         cd ${DIR} && \
-        git clone --depth 1 git://github.com/AviSynth/AviSynthPlus.git && \
+        git clone --depth 1 -b ${AVISYNTHPLUS_VERSION} git://github.com/AviSynth/AviSynthPlus.git && \
         cd AviSynthPlus && \
         mkdir avisynth-build && \
         cd avisynth-build && \
@@ -492,7 +494,7 @@ RUN     set -xe && \
 ## ffmpeg https://ffmpeg.org/
 RUN  \
         DIR=/tmp && mkdir -p ${DIR} && cd ${DIR} && \
-        git clone --depth 1 git://git.ffmpeg.org/ffmpeg.git
+        git clone --depth 1 -b ${FFMPEG_VERSION} git://git.ffmpeg.org/ffmpeg.git
 
 RUN \
         DIR=/tmp/ffmpeg && mkdir -p ${DIR} && cd ${DIR} && \
@@ -557,12 +559,13 @@ RUN     set -xe && \
         make -j$(nproc) && \
         make install && \
         rm -rf ${DIR}
+
 # l-smash-source
 RUN     set -xe && \
         DIR=/tmp/lsmashsouce && \
         mkdir -p ${DIR} && \
         cd ${DIR} && \
-        git clone https://github.com/HolyWu/L-SMASH-Works.git && \
+        git clone -b ${LSMASHSOURCE_VERSION} https://github.com/HolyWu/L-SMASH-Works.git && \
         cd L-SMASH-Works/AviSynth && \
         git checkout 72d3eac802eebcfc9080009c1a8d47a747e3a306 &&\
         CC=gcc-9 CXX=gcc-9 LD=gcc-9 LDFLAGS="-Wl,-Bsymbolic" meson build && \
@@ -583,6 +586,6 @@ RUN \
 FROM        base AS release
 MAINTAINER  Tobitti <mail@tobitti.net>
 ENV         LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:/usr/lib:/usr/lib64:/lib:/lib64
+COPY --from=build /usr/local /usr/local
 CMD         ["--help"]
 ENTRYPOINT  ["ffmpeg"]
-COPY --from=build /usr/local /usr/local
