@@ -33,13 +33,14 @@ jobs:
             docker-compose --file docker-compose.test.yml run sut
           else
             docker build . --file ubuntu19.10/Dockerfile
+            docker build . --file nvidia18.04/Dockerfile
           fi
 
   # Push image to GitHub Packages.
   # See also https://docs.docker.com/docker-hub/builds/
   push:
     # Ensure test job passes before pushing image.
-    needs: test
+    #needs: test
 
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
@@ -47,8 +48,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build image
-        run: docker build . --file ubuntu19.10/Dockerfile --tag $IMAGE_NAME
+      - name: Build image ubuntu19.10
+        run: docker build . --file ubuntu19.10/Dockerfile --tag $IMAGE_NAME-ubuntu1910
+      
+      #- name: Build image nvidia18.04
+      #  run: docker build . --file nvidia18.04/Dockerfile --tag $IMAGE_NAME-nvidia1804
 
       - name: Log into GitHub Container Registry
       # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
@@ -73,5 +77,8 @@ jobs:
           echo IMAGE_ID=$IMAGE_ID
           echo VERSION=$VERSION
 
-          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
-          docker push $IMAGE_ID:$VERSION
+          docker tag $IMAGE_NAME-ubuntu1910 $IMAGE_ID:$VERSION-ubuntu1910
+          #docker tag $IMAGE_NAME-ubuntu1804 $IMAGE_ID:$VERSION-nvidia1804
+
+          docker push $IMAGE_ID:$VERSION-ubuntu1910
+          #docker push $IMAGE_ID:$VERSION-nvidia1804

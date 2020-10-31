@@ -43,6 +43,9 @@ ENV         FFMPEG_VERSION=n4.3.1 \
             LIBXML2_VERSION=2.9.10 \
             LIBBLURAY_VERSION=1.1.2 \
             LIBZMQ_VERSION=4.3.2 \
+            LIBSRT_VERSION=1.4.1 \
+            LIBARIBB24_VERSION=1.0.3 \
+            LIBPNG_VERSION=1.6.9 \ 
             SRC=/usr/local
 
 ARG         FREETYPE_SHA256SUM="5d03dd76c2171a7601e9ce10551d52d4471cf92cd205948e60289251daddffa8 freetype-2.5.5.tar.gz"
@@ -57,6 +60,7 @@ ARG         XVID_SHA256SUM="4e9fd62728885855bc5007fe1be58df42e5e274497591fec3724
 ARG         LIBXML2_SHA256SUM="f07dab13bf42d2b8db80620cce7419b3b87827cc937c8bb20fe13b8571ee9501  libxml2-v2.9.10.tar.gz"
 ARG         LIBBLURAY_SHA256SUM="a3dd452239b100dc9da0d01b30e1692693e2a332a7d29917bf84bb10ea7c0b42 libbluray-1.1.2.tar.bz2"
 ARG         LIBZMQ_SHA256SUM="02ecc88466ae38cf2c8d79f09cfd2675ba299a439680b64ade733e26a349edeb v4.3.2.tar.gz"
+ARG         LIBARIBB24_SHA256SUM="f61560738926e57f9173510389634d8c06cabedfa857db4b28fb7704707ff128 v1.0.3.tar.gz"
 
 
 ARG         LD_LIBRARY_PATH=/opt/ffmpeg/lib
@@ -477,6 +481,46 @@ RUN \
         make check && \
         make install && \
         rm -rf ${DIR}
+
+
+## libsrt https://github.com/Haivision/srt
+RUN \
+        DIR=/tmp/srt && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+        curl -sLO https://github.com/Haivision/srt/archive/v${LIBSRT_VERSION}.tar.gz && \
+        tar -xz --strip-components=1 -f v${LIBSRT_VERSION}.tar.gz && \
+        cmake -DCMAKE_INSTALL_PREFIX="${PREFIX}" . && \
+        make && \
+        make install && \
+        rm -rf ${DIR}
+
+## libpng
+RUN \
+        DIR=/tmp/png && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+        git clone https://git.code.sf.net/p/libpng/code ${DIR} -b v${LIBPNG_VERSION} --depth 1 && \
+        ./autogen.sh && \
+        ./configure --prefix="${PREFIX}" && \
+        make check && \
+        make install && \
+        rm -rf ${DIR}
+
+## libaribb24
+RUN \
+        DIR=/tmp/b24 && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+        curl -sLO https://github.com/nkoriyama/aribb24/archive/v${LIBARIBB24_VERSION}.tar.gz && \
+        echo ${LIBARIBB24_SHA256SUM} | sha256sum --check && \
+        tar -xz --strip-components=1 -f v${LIBARIBB24_VERSION}.tar.gz && \
+        autoreconf -fiv && \
+        ./configure CFLAGS="-I${PREFIX}/include -fPIC" --prefix="${PREFIX}" && \
+        make && \
+        make install && \
+        rm -rf ${DIR}
+
 #AviSynth+
 RUN     set -xe && \
         DIR=/tmp/avisynth && \
@@ -491,6 +535,7 @@ RUN     set -xe && \
         ninja install && \
         ldconfig && \
         rm -rf ${DIR}
+
 ## ffmpeg https://ffmpeg.org/
 RUN  \
         DIR=/tmp && mkdir -p ${DIR} && cd ${DIR} && \
@@ -537,6 +582,8 @@ RUN \
         --enable-libaom \
         --enable-avisynth \
         --extra-libs=-lpthread \
+        --enable-libsrt \
+        --enable-libaribb24 \
         --extra-cflags="-I${PREFIX}/include" \
         --extra-ldflags="-L${PREFIX}/lib" && \
         make && \
@@ -546,6 +593,7 @@ RUN \
         hash -r && \
         cd tools && \
         make qt-faststart && cp qt-faststart ${PREFIX}/bin/
+
 #FFMS2
 RUN     set -xe && \
         DIR=/tmp/ffms2 && \
@@ -586,6 +634,6 @@ RUN \
 FROM        base AS release
 MAINTAINER  Tobitti <mail@tobitti.net>
 ENV         LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:/usr/lib:/usr/lib64:/lib:/lib64
-COPY --from=build /usr/local /usr/local
+COPY        --from=build /usr/local /usr/local
 CMD         ["--help"]
 ENTRYPOINT  ["ffmpeg"]
