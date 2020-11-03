@@ -1,21 +1,12 @@
-name: Docker
+name: 4.3.1_ubuntu1910
 
 on:
-  push:
-    # Publish `master` as Docker `latest` image.
-    branches:
-      - master
-
-    # Publish `v1.2.3` tags as releases.
-    tags:
-      - v*
-
-  # Run tests for any PRs.
-  pull_request:
+  on: [ workflow_dispatch ]
 
 env:
-  # TODO: Change variable to your image's name.
   IMAGE_NAME: docker-avisynthplus
+  TAG_NAME: 4.3.1-ubuntu1910
+  TARGET_DIR: ubuntu19.10
 
 jobs:
   # Run tests.
@@ -48,37 +39,23 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build image ubuntu19.10
-        run: docker build . --file ubuntu19.10/Dockerfile --tag $IMAGE_NAME-ubuntu1910
+      - name: Build image
+        run: docker build . --file $TARGET_DIR/Dockerfile --tag $IMAGE_NAME
       
-      #- name: Build image nvidia18.04
-      #  run: docker build . --file nvidia18.04/Dockerfile --tag $IMAGE_NAME-nvidia1804
+      - name: RUN IMAGE
+        run: docker run $IMAGE_NAME
 
       - name: Log into GitHub Container Registry
-      # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
         run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Push image to GitHub Container Registry
         run: |
           IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
 
-          # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
 
-          # Strip git ref prefix from version
-          #VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-
-          # Strip "v" prefix from tag name
-          #[[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
-          # Use Docker `latest` tag convention
-          #[ "$VERSION" == "master" ] && VERSION=latest
-
           echo IMAGE_ID=$IMAGE_ID
-          #echo VERSION=$VERSION
 
-          docker tag $IMAGE_NAME-ubuntu1910 $IMAGE_ID:4.3.1-ubuntu1910
-          #docker tag $IMAGE_NAME-ubuntu1804 $IMAGE_ID:4.3.1-nvidia1804
+          docker tag $IMAGE_NAME $IMAGE_ID:$TAG_NAME
 
-          docker push $IMAGE_ID:4.3.1-ubuntu1910
-          #docker push $IMAGE_ID:4.3.1-nvidia1804
+          docker push $IMAGE_ID:$TAG_NAME
