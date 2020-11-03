@@ -1,0 +1,63 @@
+name: 4.3.1_ubuntu1910
+
+on:
+  on: [ workflow_dispatch ]
+
+env:
+  IMAGE_NAME: docker-avisynthplus
+  #set tagname
+  TAG_NAME: 4.3.1-ubuntu1910
+  #set targetdir
+  TARGET_DIR: ubuntu19.10
+
+jobs:
+  # Run tests.
+  # See also https://docs.docker.com/docker-hub/builds/automated-testing/
+#  test:
+#    runs-on: ubuntu-latest
+
+#    steps:
+#      - uses: actions/checkout@v2
+
+#      - name: Run tests
+#        run: |
+#          if [ -f docker-compose.test.yml ]; then
+#            docker-compose --file docker-compose.test.yml build
+#            docker-compose --file docker-compose.test.yml run sut
+#          else
+#            docker build . --file ubuntu19.10/Dockerfile
+#            docker build . --file nvidia18.04/Dockerfile
+#          fi
+
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  push:
+    # Ensure test job passes before pushing image.
+    #needs: test
+
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build image
+        run: docker build . --file $TARGET_DIR/Dockerfile --tag $IMAGE_NAME
+      
+      - name: RUN IMAGE
+        run: docker run $IMAGE_NAME
+
+      - name: Log into GitHub Container Registry
+        run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push image to GitHub Container Registry
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
+
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          echo IMAGE_ID=$IMAGE_ID
+
+          docker tag $IMAGE_NAME $IMAGE_ID:$TAG_NAME
+
+          docker push $IMAGE_ID:$TAG_NAME
