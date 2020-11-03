@@ -1,7 +1,6 @@
 name: 4.3.1_nvidia2004
 
-on:
-  on: [ workflow_dispatch ]
+on: [ workflow_dispatch ]
 
 env:
   IMAGE_NAME: docker-avisynthplus
