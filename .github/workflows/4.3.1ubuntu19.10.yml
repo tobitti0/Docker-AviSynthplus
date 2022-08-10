@@ -5,7 +5,7 @@ on: [ workflow_dispatch ]
 env:
   IMAGE_NAME: docker-avisynthplus
   TAG_NAME: 4.3.1-ubuntu1910
-  TARGET_DIR: ubuntu19.10
+  TARGET_DIR: 4.3.1/ubuntu19.10
 
 jobs:
   # Push image to GitHub Packages.

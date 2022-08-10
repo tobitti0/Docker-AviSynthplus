@@ -7,7 +7,7 @@ env:
   #set tagname
   TAG_NAME: 4.3.1-nvidia2004
   #set targetdir
-  TARGET_DIR: nvidia20.04
+  TARGET_DIR: 4.3.1/nvidia20.04
 
 jobs:
   # Push image to GitHub Packages.
