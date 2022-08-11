@@ -5,7 +5,7 @@ on: [ workflow_dispatch ]
 env:
   IMAGE_NAME: docker-avisynthplus
   #set tagname
-  TAG_NAME: 5.1-nvidia20.04
+  TAG_NAME: 5.1-nvidia2004
   #set targetdir
   TARGET_DIR: 5.1/nvidia20.04
 
