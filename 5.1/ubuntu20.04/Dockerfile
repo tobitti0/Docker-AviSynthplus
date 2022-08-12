@@ -503,14 +503,6 @@ RUN \
         make install && \
         rm -rf ${DIR}
 
-## Download ffmpeg https://ffmpeg.org/
-RUN  \
-        DIR=/tmp/ffmpeg && mkdir -p ${DIR} && cd ${DIR} && \
-        curl -sLO https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2 && \
-        tar -jx --strip-components=1 -f ffmpeg-${FFMPEG_VERSION}.tar.bz2 && \
-        ./configure     --disable-debug  --disable-doc    --disable-ffplay   --enable-shared --enable-gpl  --extra-libs=-ldl && \
-        make ;  make install
-
 #AviSynth+
 RUN     set -xe && \
         DIR=/tmp/avisynth && \
@@ -526,6 +518,14 @@ RUN     set -xe && \
         ninja install && \
         ldconfig && \
         rm -rf ${DIR}
+
+## Download ffmpeg https://ffmpeg.org/
+RUN  \
+        DIR=/tmp/ffmpeg && mkdir -p ${DIR} && cd ${DIR} && \
+        curl -sLO https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2 && \
+        tar -jx --strip-components=1 -f ffmpeg-${FFMPEG_VERSION}.tar.bz2 && \
+        ./configure     --disable-debug  --disable-doc    --disable-ffplay   --enable-shared --enable-gpl  --extra-libs=-ldl && \
+        make ;  make install
 
 ## Build ffmpeg https://ffmpeg.org/
 RUN  \
