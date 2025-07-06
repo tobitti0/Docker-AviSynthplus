@@ -1,3 +1,121 @@
+#!/usr/bin/env bash
+
+# Stop execution on any error
+# Note: we can override this in the Dockerfile RUN command with an || true.
+#       which is useful for debugging
+set -e
+
+manifestJsonFile="/tmp/workdir/generated_build_manifest.json"
+manifestJsonVersionsFile="/tmp/workdir/generated_build_versions_manifest.json"
+
+OS_NAME=$(uname -s)
+is_ubuntu=false
+is_alpine=false
+if [[ "$OS_NAME" == "Linux" ]]; then
+    if grep -q "Ubuntu" /etc/os-release; then
+        is_ubuntu=true
+    elif grep -q "Alpine Linux" /etc/alpine-release; then
+        is_alpine=true
+    fi
+fi
+######################### Callback build functions #########################
+build_libopencore-amr() {
+    ./configure --prefix="${PREFIX}" --enable-shared
+    make
+    make install
+}
+
+build_libx264() {
+    ./configure --prefix="${PREFIX}" --enable-shared --enable-pic --disable-cli
+    make
+    make install
+}
+
+build_libx265() {
+    cd build/linux
+    sed -i "/-DEXTRA_LIB/ s/$/ -DCMAKE_INSTALL_PREFIX=\${PREFIX}/" multilib.sh
+    sed -i "/^cmake/ s/$/ -DENABLE_CLI=OFF/" multilib.sh
+    ./multilib.sh
+    make -C 8bit install
+}
+
+build_libogg() {
+    ./configure --prefix="${PREFIX}" --enable-shared
+    make
+    make install
+}
+
+build_libopus() {
+    ./configure --prefix="${PREFIX}" --enable-shared
+    make
+    make install
+}
+
+build_libvorbis() {
+    ./configure --prefix="${PREFIX}" --with-ogg="${PREFIX}" --enable-shared
+    make
+    make install
+    # https://gitlab.xiph.org/xiph/vorbis
+    # cmake -G YOUR-PROJECT-GENERATOR -DBUILD_SHARED_LIBS=1 -DCMAKE_INSTALL_PREFIX="${PREFIX}" .
+    # make
+    # make install
+}
+
+build_libvpx() {
+    local data=$(jq -r '.[] | select(.library_name == "libvpx")' $manifestJsonFile)
+    local dir=$(echo "$data" | jq -r '.build_dir')
+    local vpx_version=$(jq -r '.["libvpx"]' $manifestJsonVersionsFile)
+    if [ -n "$vpx_version" ] && [[ "$vpx_version" != "null" ]]; then
+        echo "Building [libvpx-${vpx_version}] in [${dir}]"
+    else
+        echo "Error: libvpx version is empty or unset"
+    fi
+    version="v${vpx_version}"
+    git -C libvpx pull 2> /dev/null || git clone --branch ${version} --depth 1 https://chromium.googlesource.com/webm/libvpx.git
+    cd libvpx
+    pwd
+    ./configure  --prefix="${PREFIX}" --disable-examples --disable-unit-tests --enable-vp9-highbitdepth --enable-pic --enable-shared --as=yasm
+    make
+    make install
+}
+
+build_libwebp() {
+    ./configure --prefix="${PREFIX}" --enable-shared && \
+    make && \
+    make install
+}
+
+build_libmp3lame() {
+    ./configure --prefix="${PREFIX}" --bindir="${PREFIX}/bin" --enable-shared --enable-nasm --disable-frontend && \
+    make && \
+    make install
+}
+
+
+build_libxvid() {
+    # read doc/INSTALL
+    cd build/generic
+    ./configure --help
+    echo "Now guess"
+    ./configure --prefix="${PREFIX}" --bindir="${PREFIX}/bin --enable-shared"
+    make
+    make install
+}
+
+build_libfdk-aac() {
+    autoreconf -fiv && \
+    ./configure --prefix="${PREFIX}" --enable-shared
+    make
+    make install
+}
+
+build_openjpeg() {
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" . && \
+    make && \
+    make install
+}
+
+build_freetype() {
     ./configure --prefix="${PREFIX}" --disable-static --enable-shared && \
     make && \
     make install
