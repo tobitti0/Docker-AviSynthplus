@@ -333,6 +333,7 @@ build_ffmpeg() {
     ./configure --disable-debug \
         --disable-doc \
         --disable-ffplay \
+		--enable-avisynth \
         --enable-cuda \
         --enable-cuda-nvcc \
         --enable-cuvid \
