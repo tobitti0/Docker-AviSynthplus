@@ -11,16 +11,26 @@ FROM nvidia/cuda:12.6.2-devel-ubuntu24.04 AS builder
 ENV	    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
 ENV	    DEBIAN_FRONTEND=noninteractive
 
-WORKDIR     /tmp/workdir
 
-COPY generate-source-of-truth-ffmpeg-versions.py /tmp/workdir
-COPY download_tarballs.sh /tmp/workdir
-COPY build_source.sh /tmp/workdir
-COPY install_ffmpeg.sh /tmp/workdir
-
-ENV         ENV FFMPEG_VERSION=7.1.1
+ENV FFMPEG_VERSION=8.0
 
 ENV NVIDIA_HEADERS_VERSION=11.1.5.3
+
+## ------add ------
+ENV AVISYNTHPLUS_VERSION=v3.7.5
+ENV XXHASH_VERSION=v0.8.3
+ENV OBUPARSE_VERSION=v2.0.1
+ENV LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73
+ENV LSMASHSOURCE_VERSION=0eda0054bc1fede95370f0759b5d6734670d9f41
+
+# Add Package
+# AviSynthPlus  - https://github.com/AviSynth/AviSynthPlus
+# xxhash        - https://github.com/Cyan4973/xxHash
+# obuparse      - https://github.com/dwbuiten/obuparse
+# l-smash       - https://github.com/Mr-Ojii/l-smash
+# L-SMASH-Works - https://github.com/Mr-Ojii/L-SMASH-Works
+
+## ------add end ------ 
 
 ## opencore-amr - https://sourceforge.net/projects/opencore-amr/
 ##         x264 - http://www.videolan.org/developers/x264.html
@@ -119,11 +129,7 @@ ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/opt/ffmpeg/lib64:/opt/ffmpeg/lib/aarch64-l
 # Note: I don't think we need 'ca-certificates'
 ARG DEBIAN_FRONTEND=noninteractive
 RUN     apt-get -yqq update && \
-        apt-get install -yq --no-install-recommends curl jq python3 python3-requests less tree file vim && \
-        chmod +x /tmp/workdir/generate-source-of-truth-ffmpeg-versions.py && \
-        chmod +x /tmp/workdir/download_tarballs.sh && \
-        chmod +x /tmp/workdir/build_source.sh && \
-        chmod +x /tmp/workdir/install_ffmpeg.sh
+        apt-get install -yq --no-install-recommends curl jq python3 python3-requests less tree file vim
 
 RUN      buildDeps="autoconf \
                     automake \
@@ -166,11 +172,19 @@ RUN      buildDeps="autoconf \
         apt-get -yqq update && \
         apt-get install -yq --no-install-recommends ${buildDeps}
 
+
+WORKDIR     /tmp/workdir
+
+COPY generate-source-of-truth-ffmpeg-versions.py /tmp/workdir
+COPY download_tarballs.sh /tmp/workdir
+COPY build_source.sh /tmp/workdir
+COPY install_ffmpeg.sh /tmp/workdir
+
 RUN \
         echo "Installing dependencies..." && \
         apt-get install -yq --no-install-recommends ${OPENCORE_PKGS} ${X264_PKGS} ${X265_PKGS} ${OGG_PKGS} ${OPUS_PKGS} ${VORBIS_PKGS} ${VPX_PKGS} ${WEBP_PKGS} ${MP3LAME_PKGS} ${XVIDCORE_PKGS} ${FDKAAC_PKGS} ${OPENJP_PKGS} ${FREETYPE_PKGS} ${VIDSTAB_PKGS} ${FRIBIDI_PKGS} ${FONTCONFIG_PKGS} ${LIBASS_PKGS} ${AOM_PKGS} ${SVTAV1_PKGS} ${DAV1D_PKGS} ${XORG_MACROS_PKGS} ${XPROTO_PKGS} ${XAU_PKGS} ${PTHREADS_STUBS_PKGS} ${XML2_PKGS} ${BLURAY_PKGS} ${ZMQ_PKGS} ${PNG_PKGS} ${ARIBB24_PKGS} ${ZIMG_PKGS} ${THEORA_PKGS} ${SRT_PKGS} ${LIBDRM_PKGS}
 
-        # apt install libdrm-dev
+# apt install libdrm-dev
 
 ## libvmaf https://github.com/Netflix/vmaf
 ## https://github.com/Netflix/vmaf/issues/788#issuecomment-756098059
@@ -180,7 +194,7 @@ RUN \
 
 # Note: pass '--library-list lib1,lib2,lib3 for more control.
 #       Here we have 3 libs that we have to build from source
-RUN /tmp/workdir/generate-source-of-truth-ffmpeg-versions.py --library-list kvazaar,libvmaf
+RUN /tmp/workdir/generate-source-of-truth-ffmpeg-versions.py --library-list kvazaar,libvmaf,whisper
 RUN /tmp/workdir/download_tarballs.sh
 RUN /tmp/workdir/build_source.sh
 
@@ -188,9 +202,94 @@ RUN /tmp/workdir/generate-source-of-truth-ffmpeg-versions.py --library-list nvid
 RUN /tmp/workdir/download_tarballs.sh
 RUN /tmp/workdir/build_source.sh
 
-RUN /tmp/workdir/generate-source-of-truth-ffmpeg-versions.py --library-list ffmpeg-7.1
+## ------add ------
+# AviSynth+ (build and install)
+RUN     set -xe && \
+        DIR=/tmp/avisynth && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+        git clone --depth 1 -b ${AVISYNTHPLUS_VERSION} https://github.com/AviSynth/AviSynthPlus.git && \
+        cd AviSynthPlus && \
+        mkdir avisynth-build && \
+        cd avisynth-build && \
+        cmake ../ -G Ninja -DCMAKE_INSTALL_PREFIX=${PREFIX} && \
+        ninja && \
+        ninja install && \
+        ldconfig && \
+        rm -rf ${DIR}
+## ------add end ------ 
+
+RUN /tmp/workdir/generate-source-of-truth-ffmpeg-versions.py --library-list ffmpeg-8.0
 RUN /tmp/workdir/download_tarballs.sh
 RUN /tmp/workdir/build_source.sh
+
+## ------add ------
+# L-smash dependencies: xxHash (build and install)
+RUN set -xe && \
+    DIR=/tmp/xxhash && \
+    mkdir -p ${DIR} && \
+    cd ${DIR} && \
+    git init && \
+    git remote add origin https://github.com/Cyan4973/xxHash.git && \
+    git fetch origin && \
+    git checkout ${XXHASH_VERSION} && \
+    make PREFIX="${PREFIX}" && \
+    make install PREFIX="${PREFIX}" && \
+    rm -rf ${DIR}
+
+# L-smash dependencies: obuparse (build and install)
+RUN set -xe && \
+    DIR=/tmp/obuparse && \
+    mkdir -p ${DIR} && \
+    cd ${DIR} && \
+    git init && \
+    git remote add origin https://github.com/dwbuiten/obuparse.git && \
+    git fetch origin && \
+    git checkout ${OBUPARSE_VERSION} && \
+    make PREFIX="${PREFIX}" && \
+    make install PREFIX="${PREFIX}" && \
+    rm -rf ${DIR}
+
+# l-smash (build and install)
+RUN set -xe && \
+    DIR=/tmp/l-smash && \
+    mkdir -p ${DIR} && \
+    cd ${DIR} && \
+    git init && \
+    git remote add origin https://github.com/Mr-Ojii/l-smash.git && \
+    git fetch origin && \
+    git checkout ${LSMASH_VERSION} && \
+    ./configure --extra-cflags="-I${PREFIX}/include" --extra-ldflags="-L${PREFIX}/lib -L${PREFIX}/lib64" --enable-shared --prefix="${PREFIX}" && \
+    make && \
+    make install && \
+    ldconfig && \
+    rm -rf ${DIR}
+
+# L-SMASH-Works (build and install)
+RUN set -xe && \
+    DIR=/tmp/l-smash-works && \
+    mkdir -p ${DIR} && \
+    cd ${DIR} && \
+    git init && \
+    git remote add origin https://github.com/Mr-Ojii/L-SMASH-Works.git && \
+    git fetch origin && \
+    git checkout ${LSMASHSOURCE_VERSION} && \
+    cd AviSynth && \
+    LDFLAGS="-Wl,-Bsymbolic" meson setup build  --prefix "${PREFIX}" && \
+    cd build && \
+    ninja && \
+    ninja install && \
+    ldconfig && \
+    rm -rf ${DIR}
+
+## Avisynth (copy lib and plugins)
+RUN cp ${PREFIX}/lib/libavisynth.so* /usr/local/lib/
+RUN cp -r ${PREFIX}/lib/avisynth /usr/local/lib
+
+## L-SMASH-works (copy the dependencies to the lib)
+RUN ldd ${PREFIX}/lib/avisynth/liblsmashsource.so | grep opt/ffmpeg | cut -d ' ' -f 3 | xargs -i cp {} /usr/local/lib/
+
+## ------add end ------ 
 
 ## when  debugging you can pass in || true to the end of the command
 ## to keep the build going even if one of the steps fails
@@ -227,8 +326,8 @@ RUN     apt-get -yqq update && \
         apt-get autoremove -y && \
         apt-get clean -y
 
-LABEL       org.opencontainers.image.authors="julien@rottenberg.info" \
-            org.opencontainers.image.source=https://github.com/jrottenberg/ffmpeg
+LABEL       org.opencontainers.image.authors="tobitti0" \
+            org.opencontainers.image.source=https://github.com/tobitti0/Docker-AviSynthplus/
 
 ENV         LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
 
