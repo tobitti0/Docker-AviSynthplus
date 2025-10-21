@@ -285,6 +285,7 @@ RUN set -xe && \
 ## Avisynth (copy lib and plugins)
 RUN cp ${PREFIX}/lib/libavisynth.so* /usr/local/lib/
 RUN cp -r ${PREFIX}/lib/avisynth /usr/local/lib
+RUN cp -r ${PREFIX}/include/avisynth /usr/local/include/
 
 ## L-SMASH-works (copy the dependencies to the lib)
 RUN ldd ${PREFIX}/lib/avisynth/liblsmashsource.so | grep opt/ffmpeg | cut -d ' ' -f 3 | xargs -i cp {} /usr/local/lib/
