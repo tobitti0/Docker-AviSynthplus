@@ -11,7 +11,7 @@ on:
         type: string
         required: true
         description: "OSバージョン"
-      push_latest:
+      latest_tag:
         type: boolean
         required: true
         default: false
