@@ -1,0 +1,94 @@
+name: buildflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      FFmpeg_version:
+        type: string
+        required: true
+        description: "FFmpegバージョン"
+      OS_version:
+        type: string
+        required: true
+        description: "OSバージョン"
+      latest_tag:
+        type: boolean
+        required: true
+        default: false
+        description: "latest タグを付ける"
+
+env:
+  IMAGE_NAME: docker-avisynthplus
+
+jobs:
+  push:
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Debug trigger (optional)
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "FFmpeg_version=${{ github.event.inputs.FFmpeg_version }}"
+          echo "OS_version=${{ github.event.inputs.OS_version }}"
+          echo "latest_tag=${{ github.event.inputs.latest_tag }}"
+
+      - name: Compose variables
+        id: vars
+        shell: bash
+        run: |
+          ffmpeg="${{ github.event.inputs.FFmpeg_version }}"
+          os_ver="${{ github.event.inputs.OS_version }}"
+
+          # タグ用だけ "." を除去（Ubuntu24.04 -> Ubuntu2404）
+          os_tag="${os_ver//./}"
+
+          tag_name="${ffmpeg}-${os_tag}"
+          target_dir="${ffmpeg}/${os_ver}"
+
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+          echo "target_dir=$target_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Compose tags
+        id: compose_tags
+        shell: bash
+        run: |
+          base_tag="ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag_name }}"
+
+          {
+            echo "tags<<EOF"
+            echo "$base_tag"
+
+            if [[ "${{ github.event.inputs.latest_tag }}" == "true" ]]; then
+              echo "ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest"
+            fi
+
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.vars.outputs.target_dir }}
+          provenance: false
+          push: true
+          tags: ${{ steps.compose_tags.outputs.tags }}
